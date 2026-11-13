@@ -1,0 +1,1434 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>동물의 숲: MY 햄스터 키우기 (초3 수학)</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Tone.js for Sound Effects -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <!-- Google Fonts: Jua & Noto Sans KR -->
+    <link href="https://fonts.googleapis.com/css2?family=Jua&family=Noto+Sans+KR:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Jua', sans-serif;
+            background-color: #f3f7e8;
+            background-image: radial-gradient(#dce8c4 2px, transparent 2px);
+            background-size: 24px 24px;
+            user-select: none;
+            overflow-x: hidden;
+        }
+        .font-noto {
+            font-family: 'Noto Sans KR', sans-serif;
+        }
+        /* 동물의 숲 스타일 둥근 카드 & 그림자 */
+        .ac-card {
+            background: #fffdf5;
+            border: 4px solid #e6dcc3;
+            border-radius: 28px;
+            box-shadow: 0 8px 0 #d4c6a5;
+        }
+        .ac-btn {
+            transition: all 0.1s ease;
+            box-shadow: 0 5px 0 rgba(0,0,0,0.15);
+        }
+        .ac-btn:active:not(:disabled) {
+            transform: translateY(4px);
+            box-shadow: 0 1px 0 rgba(0,0,0,0.15);
+        }
+        .ac-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+        /* 애니메이션 */
+        @keyframes bounceHamster {
+            0%, 100% { transform: translateY(0) scale(1); }
+            40% { transform: translateY(-28px) scale(1.05, 0.95); }
+            60% { transform: translateY(-10px) scale(0.98, 1.02); }
+        }
+        .animate-hamster-jump {
+            animation: bounceHamster 0.7s ease-in-out 2;
+        }
+        @keyframes floatBubble {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-6px); }
+        }
+        .animate-float {
+            animation: floatBubble 2s ease-in-out infinite;
+        }
+        @keyframes popIn {
+            0% { transform: scale(0.5); opacity: 0; }
+            80% { transform: scale(1.05); opacity: 1; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .animate-pop {
+            animation: popIn 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+        }
+       /* 밤/잠자기 오버레이 */
+        .night-overlay {
+            background: radial-gradient(circle, rgba(25,35,70,0.85) 0%, rgba(10,15,35,0.95) 100%);
+        }
+        /* 햄스터 집 들어가기 상태 */
+        .hamster-inside {
+            transform: translateX(-110px) scale(0.15) !important;
+            opacity: 0 !important;
+            pointer-events: none;
+        }
+        /* 아이템(해바라기씨, 빗, 장난감) 화면 직접 연출 애니메이션 */
+        @keyframes propUseAnim {
+            0%   { opacity: 0; transform: translate(35px, -35px) scale(0.4) rotate(-20deg); }
+            20%  { opacity: 1; transform: translate(10px, -5px) scale(1.15) rotate(12deg); }
+            45%  { opacity: 1; transform: translate(-5px, -18px) scale(1.05) rotate(-14deg); }
+            70%  { opacity: 1; transform: translate(10px, -5px) scale(1.15) rotate(14deg); }
+            100% { opacity: 0; transform: translate(0px, -25px) scale(0.3) rotate(0deg); }
+        }
+        .animate-prop-use {
+            animation: propUseAnim 1.8s ease-in-out forwards;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-between p-2 sm:p-4 text-[#4a3b2c]">
+
+    <!-- 상단 상태 바 -->
+    <header class="w-full max-w-2xl ac-card p-3 sm:p-4 mb-3 flex flex-wrap items-center justify-between gap-2 bg-[#fff9e6]">
+        <div class="flex items-center gap-2">
+            <span class="text-2xl sm:text-3xl">🍃</span>
+            <div>
+                <h1 class="text-lg sm:text-xl text-[#3b6e3c] leading-tight">MY 햄스터 키우기</h1>
+                <p class="text-xs text-[#8c7a65]">초3 수학 대모험 • <span id="day-display">1일차</span></p>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-2 sm:gap-3">
+            <!-- 보유 돈 -->
+            <div class="bg-[#fef08a] border-2 border-[#eab308] px-3 py-1.5 rounded-full flex items-center gap-1.5 shadow-inner">
+                <span class="text-lg">💰</span>
+                <span id="money-display" class="text-base sm:text-lg font-bold text-[#854d0e]">0원</span>
+            </div>
+            <!-- 보유 클로버 요약 -->
+            <div class="bg-[#dcfce7] border-2 border-[#22c55e] px-3 py-1.5 rounded-full flex items-center gap-1.5 shadow-inner" title="보유 클로버">
+                <span class="text-lg">🍀</span>
+                <span id="clover-total-display" class="text-base sm:text-lg font-bold text-[#166534]">0개</span>
+            </div>
+            <!-- 소리 토글 & 초기화 -->
+            <button onclick="toggleSound()" id="sound-btn" class="p-2 bg-[#f3e8d2] rounded-full hover:bg-[#e6d5b8] text-lg" title="효과음 켜기/끄기">🔊</button>
+        </div>
+    </header>
+
+    <!-- 메인 콘텐츠 영역 -->
+    <main class="w-full max-w-2xl flex-1 flex flex-col gap-3">
+        
+        <!-- 1. 햄스터 방 화면 (메인 뷰) -->
+        <section id="view-home" class="ac-card p-4 sm:p-6 flex-1 flex flex-col justify-between relative overflow-hidden bg-gradient-to-b from-[#e0f2fe] via-[#fef9c3] to-[#fde68a]">
+            
+            <!-- 상단 게이지 및 상태 -->
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 z-10 bg-white/80 backdrop-blur-sm p-3 rounded-2xl border-2 border-[#e6dcc3]">
+                <div class="flex-1">
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-sm sm:text-base text-[#db2777] flex items-center gap-1">
+                            💖 하트하트(%) 애정도
+                        </span>
+                        <span id="heart-text" class="text-base sm:text-lg font-bold text-[#be185d]">0 / 100%</span>
+                    </div>
+                    <div class="w-full h-4 bg-pink-100 rounded-full overflow-hidden border border-pink-300">
+                        <div id="heart-bar" class="h-full bg-gradient-to-r from-pink-400 to-rose-500 transition-all duration-500" style="width: 0%;"></div>
+                    </div>
+                </div>
+                
+                <!-- 오늘 먹이 횟수 & 잠자기 버튼 -->
+                <div class="flex items-center justify-between sm:justify-end gap-2 pt-1 sm:pt-0 sm:pl-3 sm:border-l-2 border-[#e6dcc3]">
+                    <div class="text-xs sm:text-sm text-[#6b5844]">
+                        오늘 먹이: <span id="feed-count-display" class="font-bold text-[#ea580c]">0 / 3회</span>
+                    </div>
+                    <button onclick="sleepNextDay()" class="ac-btn bg-[#6366f1] hover:bg-[#4f46e5] text-white text-xs sm:text-sm px-3 py-1.5 rounded-xl flex items-center gap-1">
+                        <span>🌙</span> 잠자기
+                    </button>
+                </div>
+            </div>
+
+            <!-- 중앙 방 & 햄스터 무대 -->
+            <div class="my-4 flex-1 min-h-[240px] sm:min-h-[280px] flex flex-col items-center justify-center relative">
+                
+                <!-- 말풍선 영역 -->
+                <div id="speech-bubble" class="hidden mb-2 bg-white border-4 border-[#f59e0b] px-5 py-2.5 rounded-3xl shadow-md relative animate-float z-20">
+                    <p id="speech-text" class="text-lg sm:text-xl text-[#b45309] font-bold text-center">우윗~ 우윗~</p>
+                    <div class="w-4 h-4 bg-white border-r-4 border-b-4 border-[#f59e0b] rotate-45 absolute -bottom-2.5 left-1/2 -translate-x-1/2"></div>
+                </div>
+
+                <!-- 햄스터 및 집 그래픽 (SVG) -->
+                <div id="room-stage" class="relative flex items-end justify-center gap-4 mt-2">
+                    <!-- 집이 없을 때 안내 -->
+                    <div id="no-house-msg" class="text-center bg-white/90 p-5 rounded-3xl border-2 border-dashed border-[#a89882] max-w-xs">
+                        <div class="text-4xl mb-2">📦</div>
+                        <p class="text-base sm:text-lg text-[#5c4a38] mb-1">아직 방이 텅 비어있어요!</p>
+                        <p class="text-xs sm:text-sm text-[#8c7a65] font-noto">수학 문제를 풀어 클로버를 팔고,<br><b>노랑토끼 상점</b>에서 <b>MY 햄스터 집</b>을 사주세요!</p>
+                    </div>
+
+                    <!-- 집과 햄스터 (집 구매 후 표시: 집을 훨씬 크게 확장 & 들어가기/나오기 상호작용) -->
+                    <div id="hamster-container" class="hidden relative flex items-end justify-center gap-2 sm:gap-5">
+                        <!-- 햄스터 집 SVG (대폭 확대 + 클릭 시 나오기 버튼 활성화) -->
+                        <div id="house-wrapper" onclick="onHouseClick()" class="relative w-52 sm:w-64 cursor-pointer drop-shadow-lg transition-transform hover:scale-[1.02]" title="집을 클릭해보세요!">
+                            <!-- 집 클릭 시 나타나는 '햄스터 나오기' 버튼 -->
+                            <button id="hamster-out-btn" onclick="event.stopPropagation(); bringHamsterOut();" class="hidden ac-btn absolute -top-5 left-1/2 -translate-x-1/2 whitespace-nowrap bg-[#fde047] hover:bg-[#facc15] border-2 border-[#854d0e] text-[#713f12] font-bold text-xs sm:text-sm px-3.5 py-1.5 rounded-full z-30 animate-bounce">
+                                🐹 햄스터 나오기
+                            </button>
+                            <svg viewBox="0 0 140 130" class="w-full h-auto">
+                                <!-- 지붕 -->
+                                <path d="M10 60 L70 12 L130 60 Z" fill="#ef4444" stroke="#991b1b" stroke-width="4" stroke-linejoin="round"/>
+                                <path d="M22 55 L70 18 L118 55" fill="none" stroke="#fca5a5" stroke-width="3" stroke-linecap="round"/>
+                                <!-- 본체 -->
+                                <rect x="24" y="58" width="92" height="64" rx="10" fill="#fef3c7" stroke="#b45309" stroke-width="4"/>
+                                <!-- 문 (햄스터가 쏙 들어갈 수 있는 크기의 큰 문) -->
+                                <path d="M46 122 L46 76 A24 24 0 0 1 94 76 L94 122 Z" fill="#78350f"/>
+                                <!-- 창문 -->
+                                <circle cx="70" cy="43" r="10" fill="#bae6fd" stroke="#b45309" stroke-width="3"/>
+                                <!-- 명패 -->
+                                <rect x="48" y="60" width="44" height="11" rx="4" fill="#fde047" stroke="#ca8a04" stroke-width="2"/>
+                            </svg>
+                        </div>
+
+                        <!-- 귀여운 햄스터 SVG (집 문에 쏙 들어갈 수 있는 아담한 크기 + 클릭 시 집 들어가기) -->
+                        <div id="hamster-character" onclick="putHamsterInHouse()" class="w-20 sm:w-24 cursor-pointer drop-shadow-md transition-all duration-500 hover:scale-105 z-10 mb-1" title="클릭하면 집에 들어가요!">
+                            <svg viewBox="0 0 140 140" class="w-full h-auto">
+                                <!-- 귀 -->
+                                <circle cx="38" cy="40" r="16" fill="#f59e0b" stroke="#78350f" stroke-width="4"/>
+                                <circle cx="38" cy="40" r="8" fill="#fbcfe8"/>
+                                <circle cx="102" cy="40" r="16" fill="#f59e0b" stroke="#78350f" stroke-width="4"/>
+                                <circle cx="102" cy="40" r="8" fill="#fbcfe8"/>
+                                <!-- 몸통 -->
+                                <ellipse cx="70" cy="86" rx="46" ry="44" fill="#fbbf24" stroke="#78350f" stroke-width="4"/>
+                                <!-- 배 -->
+                                <ellipse cx="70" cy="96" rx="30" ry="28" fill="#fffbeb"/>
+                                <!-- 볼터치 -->
+                                <ellipse cx="40" cy="76" rx="10" ry="6" fill="#f472b6" opacity="0.7"/>
+                                <ellipse cx="100" cy="76" rx="10" ry="6" fill="#f472b6" opacity="0.7"/>
+                                <!-- 눈 -->
+                                <circle cx="52" cy="64" r="6" fill="#1f2937"/>
+                                <circle cx="50" cy="62" r="2" fill="#ffffff"/>
+                                <circle cx="88" cy="64" r="6" fill="#1f2937"/>
+                                <circle cx="86" cy="62" r="2" fill="#ffffff"/>
+                                <!-- 코 & 입 -->
+                                <ellipse cx="70" cy="72" rx="4" ry="3" fill="#ec4899"/>
+                                <path d="M63 78 Q70 84 70 77 Q70 84 77 78" fill="none" stroke="#78350f" stroke-width="3" stroke-linecap="round"/>
+                                <!-- 앞발 -->
+                                <ellipse cx="52" cy="94" rx="7" ry="5" fill="#fed7aa" stroke="#78350f" stroke-width="2.5"/>
+                                <ellipse cx="88" cy="94" rx="7" ry="5" fill="#fed7aa" stroke="#78350f" stroke-width="2.5"/>
+                                <!-- 뒷발 -->
+                                <ellipse cx="48" cy="126" rx="11" ry="6" fill="#fed7aa" stroke="#78350f" stroke-width="3"/>
+                                <ellipse cx="92" cy="126" rx="11" ry="6" fill="#fed7aa" stroke="#78350f" stroke-width="3"/>
+                            </svg>
+                        </div>
+
+                        <!-- 해바라기씨/빗/장난감 화면 직접 연출용 소품 레이어 -->
+                        <div id="prop-fx-layer" class="pointer-events-none absolute right-2 sm:right-4 bottom-6 text-5xl sm:text-6xl z-20"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 하단 돌봄 아이템 사용 바 (일회성 아이템) -->
+            <div class="bg-white/90 p-3 rounded-2xl border-2 border-[#e6dcc3] z-10">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs sm:text-sm text-[#6b5844]">🎒 내 가방 (아이템을 누르면 1회 사용하고 사라져요!)</span>
+                    <button id="award-replay-btn" onclick="openAwardModal()" class="hidden text-xs bg-yellow-400 text-yellow-950 px-2.5 py-1 rounded-full font-bold shadow">🏆 시상식 다시보기</button>
+                </div>
+                <div class="grid grid-cols-3 gap-2 sm:gap-3">
+                    <button id="use-food-btn" onclick="useItem('food')" class="ac-btn bg-[#ffedd5] hover:bg-[#fed7aa] border-2 border-[#fb923c] p-2 sm:p-3 rounded-2xl flex flex-col items-center">
+                        <span class="text-2xl sm:text-3xl">🌻</span>
+                        <span class="text-xs sm:text-sm font-bold text-[#9a3412] mt-1">해바라기씨</span>
+                        <span id="inv-food" class="text-xs bg-white px-2 py-0.5 rounded-full text-[#ea580c] mt-0.5 font-bold">보유: 0개</span>
+                    </button>
+                    <button id="use-comb-btn" onclick="useItem('comb')" class="ac-btn bg-[#fce7f3] hover:bg-[#fbcfe8] border-2 border-[#f472b6] p-2 sm:p-3 rounded-2xl flex flex-col items-center">
+                        <span class="text-2xl sm:text-3xl">🪮</span>
+                        <span class="text-xs sm:text-sm font-bold text-[#9d174d] mt-1">핑크 빗</span>
+                        <span id="inv-comb" class="text-xs bg-white px-2 py-0.5 rounded-full text-[#db2777] mt-0.5 font-bold">보유: 0개</span>
+                    </button>
+                    <button id="use-toy-btn" onclick="useItem('toy')" class="ac-btn bg-[#e0e7ff] hover:bg-[#c7d2fe] border-2 border-[#818cf8] p-2 sm:p-3 rounded-2xl flex flex-col items-center">
+                        <span class="text-2xl sm:text-3xl">🎡</span>
+                        <span class="text-xs sm:text-sm font-bold text-[#3730a3] mt-1">쳇바퀴 장난감</span>
+                        <span id="inv-toy" class="text-xs bg-white px-2 py-0.5 rounded-full text-[#4f46e5] mt-0.5 font-bold">보유: 0개</span>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- 2. 수학 공부하기 화면 -->
+        <section id="view-math" class="hidden ac-card p-4 sm:p-6 flex-1 flex flex-col justify-between bg-[#f0fdf4]">
+            <div>
+                <div class="flex items-center justify-between mb-3">
+                    <span class="bg-[#16a34a] text-white px-3 py-1 rounded-full text-sm">✏️ 초3 수학 퀴즈</span>
+                    <div class="flex items-center gap-1.5" id="quiz-progress-dots">
+                        <!-- 5개 진행 점 -->
+                    </div>
+                </div>
+                <div class="bg-[#14532d] text-white p-5 sm:p-6 rounded-2xl border-4 border-[#854d0e] shadow-inner min-h-[150px] flex flex-col justify-center">
+                    <span id="math-unit-badge" class="inline-block w-fit bg-[#fde047] text-[#713f12] text-xs px-2.5 py-0.5 rounded-full mb-2 font-bold">단원명</span>
+                    <p id="math-question-text" class="text-lg sm:text-2xl leading-relaxed font-noto font-bold">문제가 여기에 표시됩니다.</p>
+                </div>
+            </div>
+
+            <!-- 객관식 보기 4개 -->
+            <div id="math-options" class="grid grid-cols-1 sm:grid-cols-2 gap-3 my-4">
+                <!-- 버튼 동적 생성 -->
+            </div>
+
+            <div class="flex justify-between items-center pt-2 border-t-2 border-[#dcfce7]">
+                <button onclick="switchView('home')" class="text-sm text-[#6b7280] hover:text-[#374151] underline">← 방으로 돌아가기 (진행 초기화)</button>
+                <span class="text-xs sm:text-sm text-[#15803d]">5문제를 모두 풀면 클로버가 나와요! 🍀</span>
+            </div>
+        </section>
+
+        <!-- 3. 마을 상점가 화면 -->
+        <section id="view-shops" class="hidden ac-card p-4 sm:p-6 flex-1 flex flex-col gap-4 bg-[#fffbeb]">
+            <div class="flex items-center justify-between">
+                <h2 class="text-xl sm:text-2xl text-[#92400e]">🏘️ 동물의 숲 상점가</h2>
+                <div class="flex gap-1.5 text-xs sm:text-sm bg-white px-3 py-1 rounded-full border border-[#fde68a]">
+                    <span>🍀1잎:<b id="c1-cnt">0</b></span>
+                    <span>🍀2잎:<b id="c2-cnt">0</b></span>
+                    <span>🍀3잎:<b id="c3-cnt">0</b></span>
+                    <span>🍀4잎:<b id="c4-cnt" class="text-emerald-600">0</b></span>
+                </div>
+            </div>
+
+            <!-- 상점 탭 버튼 -->
+            <div class="grid grid-cols-3 gap-2">
+                <button onclick="selectShopTab('raccoon')" id="tab-raccoon" class="ac-btn p-2.5 rounded-2xl border-2 border-[#b45309] bg-[#fef3c7] text-center">
+                    <div class="text-2xl sm:text-3xl">🦝</div>
+                    <div class="text-xs sm:text-sm font-bold text-[#78350f]">너구리 상점</div>
+                    <div class="text-[11px] text-[#92400e]">1~3잎 클로버 판매</div>
+                </button>
+                <button onclick="selectShopTab('owl')" id="tab-owl" class="ac-btn p-2.5 rounded-2xl border-2 border-[#6d28d9] bg-[#ede9fe] text-center">
+                    <div class="text-2xl sm:text-3xl">🦉</div>
+                    <div class="text-xs sm:text-sm font-bold text-[#4c1d95]">부엉이 특별시장</div>
+                    <div class="text-[11px] text-[#5b21b6]">4잎 클로버 판매</div>
+                </button>
+                <button onclick="selectShopTab('rabbit')" id="tab-rabbit" class="ac-btn p-2.5 rounded-2xl border-2 border-[#db2777] bg-[#fce7f3] text-center">
+                    <div class="text-2xl sm:text-3xl">🐰</div>
+                    <div class="text-xs sm:text-sm font-bold text-[#831843]">노랑토끼 상점</div>
+                    <div class="text-[11px] text-[#9d174d]">집 & 돌봄용품 구매</div>
+                </button>
+            </div>
+
+            <!-- 상점 내용 패널 -->
+            <div id="shop-content" class="flex-1 bg-white p-4 rounded-2xl border-2 border-[#f3e8d2] flex flex-col justify-between">
+                <!-- 동적 렌더링 -->
+            </div>
+        </section>
+
+    </main>
+
+    <!-- 하단 메인 내비게이션 바 -->
+    <nav class="w-full max-w-2xl mt-3 grid grid-cols-3 gap-2 sm:gap-3">
+        <button onclick="switchView('home')" id="nav-home" class="ac-btn bg-[#f59e0b] text-white py-3 rounded-2xl text-base sm:text-lg flex items-center justify-center gap-1.5">
+            <span>🏠</span> 내 방
+        </button>
+        <button onclick="startMathQuiz()" id="nav-math" class="ac-btn bg-[#22c55e] text-white py-3 rounded-2xl text-base sm:text-lg flex items-center justify-center gap-1.5">
+            <span>✏️</span> 수학 풀기
+        </button>
+        <button onclick="switchView('shops')" id="nav-shops" class="ac-btn bg-[#ec4899] text-white py-3 rounded-2xl text-base sm:text-lg flex items-center justify-center gap-1.5">
+            <span>🏪</span> 상점 가기
+        </button>
+    </nav>
+
+    <!-- ================= 모달 창들 ================= -->
+
+    <!-- 1. 고양이 선생님 오답 설명 모달 -->
+    <div id="cat-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+        <div class="ac-card max-w-md w-full p-5 sm:p-6 bg-[#fffbeb] border-4 border-[#f59e0b] animate-pop">
+            <div class="flex items-center gap-3 mb-3">
+                <div class="text-5xl bg-amber-100 p-2 rounded-full border-2 border-amber-400">🐱</div>
+                <div>
+                    <span class="bg-amber-500 text-white text-xs px-2.5 py-0.5 rounded-full">친절한 고양이 선생님</span>
+                    <h3 class="text-xl text-[#92400e] mt-0.5">아쉬워요! 같이 살펴볼까옹?</h3>
+                </div>
+            </div>
+            <div class="bg-white p-4 rounded-2xl border-2 border-amber-200 mb-4 font-noto text-sm sm:text-base text-[#4a3b2c] space-y-2">
+                <p id="cat-wrong-choice" class="text-rose-600 font-bold"></p>
+                <div class="h-px bg-amber-100"></div>
+                <p id="cat-explanation" class="leading-relaxed"></p>
+            </div>
+            <button onclick="closeCatModal()" class="ac-btn w-full bg-[#f59e0b] hover:bg-[#d97706] text-white py-3 rounded-2xl text-lg">
+                알겠어요! 다시 풀어볼게요 🐾
+            </button>
+        </div>
+    </div>
+
+    <!-- 2. 5문제 완료 & 클로버 획득 모달 -->
+    <div id="clover-modal" class="hidden fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+        <div class="ac-card max-w-sm w-full p-6 bg-[#f0fdf4] border-4 border-[#22c55e] text-center animate-pop">
+            <div class="text-sm text-[#15803d] font-bold mb-1">🎉 수학 5문제 클리어!</div>
+            <h3 class="text-2xl text-[#14532d] mb-3">행운의 클로버 발견!</h3>
+            <div id="clover-reward-icon" class="text-7xl my-4 animate-bounce">🍀</div>
+            <p id="clover-reward-name" class="text-xl font-bold text-[#166534] mb-1">1잎 클로버</p>
+            <p id="clover-reward-desc" class="text-sm text-[#4d7c0f] font-noto mb-5">너구리 상점에서 판매할 수 있어요!</p>
+            <button onclick="closeCloverModal()" class="ac-btn w-full bg-[#22c55e] hover:bg-[#16a34a] text-white py-3 rounded-2xl text-lg">
+                가방에 넣기 🎒
+            </button>
+        </div>
+    </div>
+
+    <!-- 3. 하트하트 100% 달성 시상식 모달 -->
+    <div id="award-modal" class="hidden fixed inset-0 bg-black/75 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+        <div class="ac-card max-w-md w-full p-6 bg-gradient-to-b from-[#fef9c3] via-[#fffbeb] to-[#fce7f3] border-4 border-[#eab308] text-center animate-pop">
+            <div class="text-4xl mb-1">🎊🏆🎊</div>
+            <h2 class="text-2xl sm:text-3xl text-[#b45309] mb-2">하트하트 100% 달성!</h2>
+            <p class="text-sm sm:text-base text-[#78350f] font-noto mb-4">
+                정성껏 먹이를 주고 빗질하며 놀아준 덕분에<br>햄스터가 세상에서 제일 행복해졌어요!
+            </p>
+            <!-- 명예 햄스터 뱃지 SVG -->
+            <div class="my-4 flex justify-center">
+                <div class="w-36 h-36 rounded-full bg-gradient-to-tr from-amber-400 via-yellow-200 to-amber-500 p-2 shadow-xl border-4 border-white flex flex-col items-center justify-center">
+                    <span class="text-5xl">🐹</span>
+                    <span class="text-xs font-bold text-amber-950 mt-1 bg-white/80 px-2 py-0.5 rounded-full">최고의 집사 뱃지</span>
+                </div>
+            </div>
+            <p class="text-lg text-[#db2777] font-bold mb-5">"우윗~ 우윗~ 정말 고마워요!"</p>
+            <div class="flex flex-col sm:flex-row gap-2">
+                <button onclick="closeAwardModal()" class="ac-btn flex-1 bg-[#eab308] text-yellow-950 py-3 rounded-2xl text-base font-bold">
+                    계속 함께 지내기
+                </button>
+                <button onclick="resetForNewHamster()" class="ac-btn flex-1 bg-[#ec4899] text-white py-3 rounded-2xl text-base">
+                    새 햄스터 키우기
+                </button>
+            </div>
+        </div>
+    </div>
+
+<!-- 4. 잠자기 연출 오버레이 -->
+    <div id="sleep-overlay" class="hidden fixed inset-0 night-overlay z-50 flex flex-col items-center justify-center text-white p-4">
+        <div class="text-6xl mb-4 animate-pulse">🌙💤</div>
+        <p class="text-2xl sm:text-3xl mb-2">쿨쿨... 다음 날이 밝아옵니다!</p>
+        <p class="text-sm text-indigo-200 font-noto">햄스터가 배고파질 시간이에요. 먹이 횟수가 초기화됩니다.</p>
+    </div>
+
+    <!-- 5. 처음 접속 PIN 번호 로그인 모달 (클라우드 저장/불러오기) -->
+    <div id="pin-modal" class="fixed inset-0 bg-[#f3f7e8]/95 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="ac-card max-w-sm w-full p-6 bg-[#fffdf5] border-4 border-[#22c55e] text-center animate-pop">
+            <div class="text-5xl mb-2">🐹🔑</div>
+            <h2 class="text-2xl text-[#15803d] mb-1">MY 햄스터 마을 입장</h2>
+            <p class="text-xs sm:text-sm text-[#6b5844] font-noto mb-4">
+                나만의 비밀 PIN 번호(숫자 또는 이름+숫자)를 입력하면<br>어디서든 하던 곳에서 이어서 키울 수 있어요!
+            </p>
+            <input type="text" id="pin-input" maxlength="10" placeholder="예: 1234" onkeydown="if(event.key==='Enter') submitPinLogin()"
+                class="w-full text-center text-2xl font-bold tracking-widest py-3 px-4 rounded-2xl border-3 border-[#86efac] bg-[#f0fdf4] text-[#14532d] focus:outline-none focus:border-[#22c55e] mb-3">
+            <button id="pin-submit-btn" onclick="submitPinLogin()" class="ac-btn w-full bg-[#22c55e] hover:bg-[#16a34a] text-white py-3 rounded-2xl text-lg font-bold">
+                마을로 들어가기 🍃
+            </button>
+            <p id="pin-status-text" class="text-xs sm:text-sm text-[#d97706] font-noto mt-3 min-h-[20px]"></p>
+        </div>
+    </div>
+
+    <!-- 토스트 알림 메시지 (alert 대체) -->
+
+    <div id="toast-msg" class="hidden fixed top-20 left-1/2 -translate-x-1/2 bg-[#3b2f2f] text-white px-5 py-2.5 rounded-full shadow-lg z-50 text-sm sm:text-base animate-pop">
+        알림 메시지
+    </div>
+
+   <script>
+        /* ==========================================================================
+           1. 게임 상태 관리 (PIN 번호 클라우드 동기화 + LocalStorage 백업 + 실제 날짜 연동)
+           ========================================================================== */
+        const GAS_WEBAPP_URL = 'https://script.google.com/macros/s/AKfycbxxBxKn0r5fmtVaO5-SrhHUlvG7My9WXhSFdJI24zbKm1EN5PHc-FtqJcz2J7T-HHcwWg/exec';
+        const STORAGE_PREFIX = 'ac_hamster_math_pin_';
+        let currentPin = '';
+        let isHamsterInside = false;
+
+        function getTodayStr() {
+            const d = new Date();
+            return `${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}`;
+        }
+
+        let state = {
+            money: 0,
+            clovers: { 1: 0, 2: 0, 3: 0, 4: 0 },
+            hasHouse: false,
+            heart: 0,
+            inventory: { food: 0, comb: 0, toy: 0 },
+            dayCount: 1,
+            lastRealDate: getTodayStr(),
+            feedCountToday: 0,
+            awardShown: false,
+            soundOn: true
+        };
+
+        const PRICES = {
+            house: 500,
+            food: 100,
+            comb: 100,
+            toy: 100
+        };
+
+        // PIN 번호 로그인 및 서버 데이터 불러오기
+        async function submitPinLogin() {
+            const inputEl = document.getElementById('pin-input');
+            const statusEl = document.getElementById('pin-status-text');
+            const btnEl = document.getElementById('pin-submit-btn');
+            const pin = inputEl.value.trim();
+
+            if (!pin) {
+                statusEl.textContent = 'PIN 번호를 먼저 입력해 주세요!';
+                inputEl.focus();
+                return;
+            }
+
+            currentPin = pin;
+            btnEl.disabled = true;
+            statusEl.textContent = '마을 기록을 불러오는 중입니다... 🐹⏳';
+
+            try {
+                const res = await fetch(`${GAS_WEBAPP_URL}?pin=${encodeURIComponent(currentPin)}`);
+                const result = await res.json();
+
+                if (result.status === 'found' && result.gameData) {
+                    state = { ...state, ...result.gameData };
+                    statusEl.textContent = '기존 마을 데이터를 불러왔어요!';
+                } else {
+                    const localSaved = localStorage.getItem(STORAGE_PREFIX + currentPin);
+                    if (localSaved) {
+                        state = { ...state, ...JSON.parse(localSaved) };
+                    }
+                    await saveState();
+                }
+
+                checkRealDateRollover();
+                document.getElementById('pin-modal').classList.add('hidden');
+                updateUI();
+                playTone('hamster');
+                showToast(`PIN [${currentPin}] 마을에 오신 것을 환영해요! 🍃`);
+            } catch (err) {
+                console.warn('서버 연결 오류, 로컬 저장소로 전환:', err);
+                const localSaved = localStorage.getItem(STORAGE_PREFIX + currentPin);
+                if (localSaved) {
+                    state = { ...state, ...JSON.parse(localSaved) };
+                }
+                checkRealDateRollover();
+                document.getElementById('pin-modal').classList.add('hidden');
+                updateUI();
+                showToast(`PIN [${currentPin}] 오프라인 모드로 입장했어요!`);
+            } finally {
+                btnEl.disabled = false;
+            }
+        }
+
+        function checkRealDateRollover() {
+            const today = getTodayStr();
+            if (state.lastRealDate !== today) {
+                state.lastRealDate = today;
+                state.feedCountToday = 0;
+                state.dayCount += 1;
+                saveState();
+            }
+        }
+
+        async function saveState() {
+            if (!currentPin) return;
+            try {
+                localStorage.setItem(STORAGE_PREFIX + currentPin, JSON.stringify(state));
+            } catch (e) {}
+
+            try {
+                await fetch(GAS_WEBAPP_URL, {
+                    method: 'POST',
+                    body: JSON.stringify({ pin: currentPin, gameData: state })
+                });
+            } catch (e) {
+                console.warn('클라우드 동기화 지연:', e);
+            }
+        }
+
+        /* ==========================================================================
+           2. 효과음 시스템 (Tone.js 합성음)
+           ========================================================================== */
+        let synth = null;
+        function playTone(type) {
+            if (!state.soundOn) return;
+            try {
+                if (!synth) {
+                    synth = new Tone.PolySynth(Tone.Synth).toDestination();
+                    synth.volume.value = -8;
+                }
+                if (Tone.context.state !== 'running') Tone.start();
+
+                const now = Tone.now();
+                if (type === 'click') {
+                    synth.triggerAttackRelease('C5', '32n', now);
+                } else if (type === 'correct') {
+                    synth.triggerAttackRelease(['C5', 'E5', 'G5'], '16n', now);
+                } else if (type === 'wrong') {
+                    synth.triggerAttackRelease(['E4', 'Eb4'], '8n', now);
+                } else if (type === 'coin') {
+                    synth.triggerAttackRelease('B5', '32n', now);
+                    synth.triggerAttackRelease('E6', '16n', now + 0.08);
+                } else if (type === 'hamster') {
+                    synth.triggerAttackRelease('G5', '32n', now);
+                    synth.triggerAttackRelease('C6', '16n', now + 0.07);
+                    synth.triggerAttackRelease('G5', '32n', now + 0.22);
+                    synth.triggerAttackRelease('D6', '16n', now + 0.29);
+                } else if (type === 'fanfare') {
+                    synth.triggerAttackRelease(['C5', 'E5', 'G5', 'C6'], '8n', now);
+                    synth.triggerAttackRelease(['F5', 'A5', 'C6', 'F6'], '4n', now + 0.25);
+                }
+            } catch (e) {}
+        }
+
+        function toggleSound() {
+            state.soundOn = !state.soundOn;
+            document.getElementById('sound-btn').textContent = state.soundOn ? '🔊' : '🔇';
+            saveState();
+            if (state.soundOn) playTone('click');
+        }
+
+        function showToast(msg) {
+            const el = document.getElementById('toast-msg');
+            el.textContent = msg;
+            el.classList.remove('hidden');
+            clearTimeout(el._timer);
+            el._timer = setTimeout(() => {
+                el.classList.add('hidden');
+            }, 2500);
+        }
+
+        /* ==========================================================================
+           3. 초등학교 3학년 수학 전 단원 핵심 개념 16종 생성기 + 중복 정답 방지
+           ========================================================================== */
+        const randInt = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+
+        const MATH_CONCEPTS = [
+            // [3-1 1단원] 세 자리 수의 덧셈
+            {
+                id: 'add3',
+                unit: '3-1 ① 덧셈과 뺄셈 (세 자리 수 덧셈)',
+                generate() {
+                    const a = randInt(235, 589), b = randInt(146, 398);
+                    const ans = a + b;
+                    return {
+                        question: `도토리 마을에 도토리가 ${a}개 있었는데, 오늘 ${b}개를 더 주웠습니다. 도토리는 모두 몇 개일까요?`,
+                        answer: `${ans}개`,
+                        wrongs: [`${ans - 10}개`, `${ans + 10}개`, `${ans - 100}개`],
+                        explain: `일의 자리(${a%10}+${b%10})와 십의 자리 받아올림을 차례대로 계산하면 ${a} + ${b} = ${ans}개가 된다옹!`
+                    };
+                }
+            },
+            // [3-1 1단원] 세 자리 수의 뺄셈
+            {
+                id: 'sub3',
+                unit: '3-1 ① 덧셈과 뺄셈 (세 자리 수 뺄셈)',
+                generate() {
+                    const a = randInt(612, 945), b = randInt(238, 489);
+                    const ans = a - b;
+                    return {
+                        question: `과일 가게에 사과가 ${a}개 있었습니다. 그중에서 ${b}개를 팔았다면 남은 사과는 몇 개일까요?`,
+                        answer: `${ans}개`,
+                        wrongs: [`${ans + 10}개`, `${ans - 10}개`, `${ans + 100}개`],
+                        explain: `전체 ${a}개에서 판 ${b}개를 뺄 때 받아내림에 주의하여 계산하면 ${a} - ${b} = ${ans}개다옹!`
+                    };
+                }
+            },
+            // [3-1 2단원] 평면도형 - 직각의 수 계산
+            {
+                id: 'shape_angles',
+                unit: '3-1 ② 평면도형 (도형 속 직각의 수)',
+                generate() {
+                    const shapes = [
+                        { name: '직각삼각형', per: 1, desc: '직각이 1개 있는 삼각형' },
+                        { name: '직사각형', per: 4, desc: '네 각이 모두 직각인 사각형' },
+                        { name: '정사각형', per: 4, desc: '네 각이 모두 직각이고 네 변의 길이가 같은 사각형' }
+                    ];
+                    const s = shapes[randInt(0, shapes.length - 1)];
+                    const count = randInt(2, 6);
+                    const ans = s.per * count;
+                    return {
+                        question: `${s.name} 모양 색종이가 ${count}장 있습니다. 이 색종이들에 있는 직각은 모두 몇 개일까요?`,
+                        answer: `${ans}개`,
+                        wrongs: [`${ans + 2}개`, `${Math.max(1, ans - 2)}개`, `${count}개`],
+                        explain: `${s.name}은 ${s.desc}이므로 1장당 직각이 ${s.per}개 있다옹! ${count}장이니까 ${s.per} × ${count} = ${ans}개다옹!`
+                    };
+                }
+            },
+            // [3-1 2단원] 평면도형 - 선분, 반직선, 직선 개념
+            {
+                id: 'shape_lines',
+                unit: '3-1 ② 평면도형 (선분·반직선·직선)',
+                generate() {
+                    const items = [
+                        {
+                            q: '두 점을 곧게 이은 선으로, 양쪽 끝이 있어 길이를 잴 수 있는 선은 무엇일까요?',
+                            a: '선분',
+                            w: ['반직선', '직선', '곡선'],
+                            e: '양쪽 끝점이 있어서 자로 길이를 정확히 잴 수 있는 곧은 선은 "선분"이라고 부른다옹!'
+                        },
+                        {
+                            q: '한 점에서 시작하여 한쪽으로만 끝없이 늘인 곧은 선은 무엇일까요?',
+                            a: '반직선',
+                            w: ['선분', '직선', '직각'],
+                            e: '한쪽은 시작점이 막혀 있고, 반대쪽 한 방향으로만 끝없이 뻗어 나가는 선은 "반직선"이다옹!'
+                        },
+                        {
+                            q: '선분을 양쪽으로 끝없이 늘인 곧은 선은 무엇일까요?',
+                            a: '직선',
+                            w: ['선분', '반직선', '삼각형'],
+                            e: '양쪽 방향으로 끝없이 계속 뻗어 나가는 곧은 선은 "직선"이라고 한다옹!'
+                        }
+                    ];
+                    const pick = items[randInt(0, items.length - 1)];
+                    return { question: pick.q, answer: pick.a, wrongs: pick.w, explain: pick.e };
+                }
+            },
+            // [3-1 3단원] 나눗셈 - 똑같이 나누기
+            {
+                id: 'div_basic',
+                unit: '3-1 ③ 나눗셈 (똑같이 나누기)',
+                generate() {
+                    const divisor = randInt(4, 9), quotient = randInt(3, 9);
+                    const dividend = divisor * quotient;
+                    return {
+                        question: `해바라기씨 ${dividend}개를 햄스터 ${divisor}마리에게 똑같이 나누어 주려고 합니다. 한 마리에게 몇 개씩 줄 수 있을까요?`,
+                        answer: `${quotient}개`,
+                        wrongs: [`${quotient + 1}개`, `${Math.max(1, quotient - 1)}개`, `${divisor}개`],
+                        explain: `${dividend} ÷ ${divisor}을 계산할 때는 ${divisor}단 곱셈구구에서 ${divisor} × ${quotient} = ${dividend}임을 떠올리면 정답은 ${quotient}개다옹!`
+                    };
+                }
+            },
+            // [3-1 4단원] 곱셈 - (두 자리 수) × (한 자리 수)
+            {
+                id: 'mul_2x1',
+                unit: '3-1 ④ 곱셈 (두 자리 수 × 한 자리 수)',
+                generate() {
+                    const a = randInt(14, 48), b = randInt(3, 8);
+                    const ans = a * b;
+                    return {
+                        question: `한 상자에 귤이 ${a}개씩 들어 있습니다. ${b}상자에 들어 있는 귤은 모두 몇 개일까요?`,
+                        answer: `${ans}개`,
+                        wrongs: [`${ans + 10}개`, `${ans - 10}개`, `${ans + b}개`],
+                        explain: `${a} × ${b}는 일의 자리(${a%10}×${b}=${(a%10)*b})와 십의 자리(${Math.floor(a/10)*10}×${b}=${Math.floor(a/10)*10*b})를 각각 곱해서 더하면 ${ans}개다옹!`
+                    };
+                }
+            },
+            // [3-1 5단원] 길이의 단위 변환 (mm, cm, m, km)
+            {
+                id: 'length_unit',
+                unit: '3-1 ⑤ 길이와 시간 (mm·cm·m·km)',
+                generate() {
+                    if (Math.random() > 0.5) {
+                        const km = randInt(2, 7), m = randInt(150, 850);
+                        const ans = km * 1000 + m;
+                        return {
+                            question: `우리 집에서 공원까지의 거리는 ${km}km ${m}m입니다. 이것을 m로 나타내면 몇 m일까요?`,
+                            answer: `${ans}m`,
+                            wrongs: [`${km * 100 + m}m`, `${ans + 100}m`, `${ans - 100}m`],
+                            explain: `1km = 1000m이므로 ${km}km는 ${km*1000}m다옹! 여기에 ${m}m를 더하면 ${ans}m가 된다옹!`
+                        };
+                    } else {
+                        const cm = randInt(4, 15), mm = randInt(2, 9);
+                        const ans = cm * 10 + mm;
+                        return {
+                            question: `연필의 길이가 ${cm}cm ${mm}mm입니다. 모두 몇 mm일까요?`,
+                            answer: `${ans}mm`,
+                            wrongs: [`${cm * 100 + mm}mm`, `${cm + mm}mm`, `${ans + 10}mm`],
+                            explain: `1cm = 10mm이므로 ${cm}cm는 ${cm*10}mm다옹! 여기에 ${mm}mm를 더하면 ${ans}mm다옹!`
+                        };
+                    }
+                }
+            },
+            // [3-1 5단원] 시간의 단위 변환 및 덧셈
+            {
+                id: 'time_calc',
+                unit: '3-1 ⑤ 길이와 시간 (시간의 계산)',
+                generate() {
+                    const startH = randInt(2, 5), startM = randInt(15, 35), addM = randInt(30, 45);
+                    const totalM = startM + addM;
+                    const endH = startH + Math.floor(totalM / 60);
+                    const endM = totalM % 60;
+                    return {
+                        question: `오후 ${startH}시 ${startM}분부터 ${addM}분 동안 독서를 했습니다. 독서가 끝난 시각은 오후 몇 시 몇 분일까요?`,
+                        answer: `${endH}시 ${endM}분`,
+                        wrongs: [`${startH}시 ${totalM}분`, `${endH}시 ${endM + 10}분`, `${endH + 1}시 ${endM}분`],
+                        explain: `1시간은 60분이다옹! ${startM}분 + ${addM}분 = ${totalM}분에서 60분을 1시간으로 받아올림하면 ${endH}시 ${endM}분이 된다옹!`
+                    };
+                }
+            },
+            // [3-1 6단원] 단위분수의 개수
+            {
+                id: 'unit_fraction',
+                unit: '3-1 ⑥ 분수와 소수 (단위분수의 개수)',
+                generate() {
+                    const denom = randInt(5, 9);
+                    const numer = randInt(2, denom - 1);
+                    return {
+                        question: `분수 ${numer}/${denom}은(는) 단위분수 1/${denom}이 몇 개 모인 수일까요?`,
+                        answer: `${numer}개`,
+                        wrongs: [`${denom}개`, `${denom - numer}개`, `${numer + 1}개`],
+                        explain: `분수 ${numer}/${denom}은 전체를 똑같이 ${denom}조각으로 나눈 것 중의 ${numer}조각이므로, 1/${denom}이 ${numer}개 모인 수다옹!`
+                    };
+                }
+            },
+            // [3-1 6단원] 소수의 자릿값
+            {
+                id: 'decimal_val',
+                unit: '3-1 ⑥ 분수와 소수 (소수의 자릿값)',
+                generate() {
+                    const whole = randInt(1, 5), tenth = randInt(2, 8);
+                    const count = whole * 10 + tenth;
+                    const ans = `${whole}.${tenth}`;
+                    return {
+                        question: `0.1이 ${count}개 모인 소수는 무엇일까요?`,
+                        answer: ans,
+                        wrongs: [`0.${count}`, `${whole + tenth}.0`, `${whole}.${tenth + 1}`],
+                        explain: `0.1이 10개 모이면 1이 된다옹! 따라서 0.1이 ${count}개 모이면 ${whole}과 0.${tenth}만큼이므로 ${ans}이 된다옹!`
+                    };
+                }
+            },
+            // [3-2 1단원] (세 자리 수) × (한 자리 수)
+            {
+                id: 'mul_3x1',
+                unit: '3-2 ① 곱셈 (세 자리 수 × 한 자리 수)',
+                generate() {
+                    const a = randInt(112, 245), b = randInt(3, 6);
+                    const ans = a * b;
+                    return {
+                        question: `하루에 ${a}원씩 ${b}일 동안 저금하면 모두 얼마가 모일까요?`,
+                        answer: `${ans}원`,
+                        wrongs: [`${ans + 100}원`, `${ans - 100}원`, `${ans + 10}원`],
+                        explain: `${a} × ${b}는 일의 자리, 십의 자리, 백의 자리 순서로 ${b}를 각각 곱해 받아올림을 더해주면 ${ans}원이 된다옹!`
+                    };
+                }
+            },
+            // [3-2 1단원] (두 자리 수) × (두 자리 수)
+            {
+                id: 'mul_2x2',
+                unit: '3-2 ① 곱셈 (두 자리 수 × 두 자리 수)',
+                generate() {
+                    const a = randInt(12, 26), b = randInt(11, 23);
+                    const ans = a * b;
+                    return {
+                        question: `한 줄에 ${a}명씩 ${b}줄로 서 있습니다. 학생은 모두 몇 명일까요?`,
+                        answer: `${ans}명`,
+                        wrongs: [`${ans + 10}명`, `${ans - 10}명`, `${ans + a}명`],
+                        explain: `${a} × ${b}는 ${a} × ${b%10}(=${a*(b%10)})과 ${a} × ${Math.floor(b/10)*10}(=${a*Math.floor(b/10)*10})을 계산해서 합치면 ${ans}명이다옹!`
+                    };
+                }
+            },
+            // [3-2 2단원] 나머지가 있는 나눗셈
+            {
+                id: 'div_rem',
+                unit: '3-2 ② 나머지가 있는 나눗셈',
+                generate() {
+                    const divisor = randInt(4, 8), quotient = randInt(3, 7);
+                    const rem = randInt(1, divisor - 1);
+                    const dividend = divisor * quotient + rem;
+                    return {
+                        question: `사탕 ${dividend}개를 한 봉지에 ${divisor}개씩 담으려고 합니다. 몇 봉지가 되고 몇 개가 남을까요?`,
+                        answer: `${quotient}봉지, 나머지 ${rem}개`,
+                        wrongs: [
+                            `${quotient - 1}봉지, 나머지 ${rem + divisor}개`,
+                            `${quotient}봉지, 나머지 ${rem + 1}개`,
+                            `${quotient + 1}봉지, 나머지 ${rem}개`
+                        ],
+                        explain: `${dividend} ÷ ${divisor}에서 ${divisor} × ${quotient} = ${divisor * quotient}이므로 몫은 ${quotient}이고, 나머지는 ${dividend} - ${divisor*quotient} = ${rem}개다옹! 나머지는 항상 나누는 수(${divisor})보다 작아야 한다옹!`
+                    };
+                }
+            },
+            // [3-2 3단원] 원의 지름과 반지름
+            {
+                id: 'circle_diam',
+                unit: '3-2 ③ 원 (반지름과 지름의 관계)',
+                generate() {
+                    const radius = randInt(4, 16);
+                    const diameter = radius * 2;
+                    return {
+                        question: `반지름이 ${radius}cm인 원 모양 접시의 지름은 몇 cm일까요?`,
+                        answer: `${diameter}cm`,
+                        wrongs: [`${radius}cm`, `${radius + 2}cm`, `${diameter + 4}cm`],
+                        explain: `원의 지름은 원의 중심을 지나며 반지름의 딱 2배 길이다옹! 따라서 ${radius} × 2 = ${diameter}cm가 정답이다옹!`
+                    };
+                }
+            },
+            // [3-2 4단원] 전체의 분수만큼 구하기
+            {
+                id: 'frac_of_whole',
+                unit: '3-2 ④ 분수 (전체의 분수만큼의 수)',
+                generate() {
+                    const denom = randInt(3, 6);
+                    const unitVal = randInt(3, 7);
+                    const total = denom * unitVal;
+                    const numer = randInt(2, denom - 1);
+                    const ans = unitVal * numer;
+                    return {
+                        question: `구슬 ${total}개의 ${numer}/${denom}은(는) 몇 개일까요?`,
+                        answer: `${ans}개`,
+                        wrongs: [`${unitVal}개`, `${ans + unitVal}개`, `${total - numer}개`],
+                        explain: `전체 ${total}개를 똑같이 ${denom}묶음으로 나누면 1묶음에 ${unitVal}개다옹! 그중 ${numer}묶음이니까 ${unitVal} × ${numer} = ${ans}개다옹!`
+                    };
+                }
+            },
+            // [3-2 5단원] 들이와 무게 (L와 mL, kg과 g)
+            {
+                id: 'capacity_weight',
+                unit: '3-2 ⑤ 들이와 무게 (단위 변환)',
+                generate() {
+                    if (Math.random() > 0.5) {
+                        const L = randInt(2, 6), mL = randInt(150, 850);
+                        const ans = L * 1000 + mL;
+                        return {
+                            question: `물통에 물이 ${L}L ${mL}mL 들어 있습니다. 모두 몇 mL일까요?`,
+                            answer: `${ans}mL`,
+                            wrongs: [`${L * 100 + mL}mL`, `${ans + 100}mL`, `${ans - 100}mL`],
+                            explain: `1L = 1000mL이므로 ${L}L는 ${L*1000}mL다옹! 여기에 ${mL}mL를 더하면 ${ans}mL가 된다옹!`
+                        };
+                    } else {
+                        const kg = randInt(2, 5), g = randInt(200, 800);
+                        const ans = kg * 1000 + g;
+                        return {
+                            question: `수박 한 통의 무게가 ${kg}kg ${g}g입니다. 모두 몇 g일까요?`,
+                            answer: `${ans}g`,
+                            wrongs: [`${kg * 100 + g}g`, `${ans + 100}g`, `${ans - 100}g`],
+                            explain: `1kg = 1000g이므로 ${kg}kg은 ${kg*1000}g다옹! 여기에 ${g}g을 더하면 ${ans}g이 된다옹!`
+                        };
+                    }
+                }
+            }
+        ];
+
+        let quizState = {
+            questions: [],
+            currentIndex: 0,
+            locked: false
+        };
+
+        // 한 판에 16개 핵심 개념 중 5개를 중복 없이 뽑고, 같은 판 안에서 정답 숫자/문자열도 절대 겹치지 않도록 보장
+        function startMathQuiz() {
+            playTone('click');
+            const shuffledConcepts = [...MATH_CONCEPTS].sort(() => Math.random() - 0.5);
+            const pickedQuestions = [];
+            const usedAnswers = new Set();
+
+            for (const concept of shuffledConcepts) {
+                if (pickedQuestions.length >= 5) break;
+
+                let generated = null;
+                for (let attempt = 0; attempt < 15; attempt++) {
+                    const candidate = concept.generate();
+                    const normalizedAns = candidate.answer.replace(/[^0-9.]/g, '') || candidate.answer;
+                    if (!usedAnswers.has(normalizedAns)) {
+                        usedAnswers.add(normalizedAns);
+                        generated = candidate;
+                        break;
+                    }
+                }
+
+                if (generated) {
+                    const options = [generated.answer, ...generated.wrongs].sort(() => Math.random() - 0.5);
+                    pickedQuestions.push({
+                        unit: concept.unit,
+                        ...generated,
+                        options
+                    });
+                }
+            }
+
+            quizState.questions = pickedQuestions;
+            quizState.currentIndex = 0;
+            quizState.locked = false;
+
+            switchView('math');
+            renderCurrentQuestion();
+        }
+
+        function renderCurrentQuestion() {
+            const q = quizState.questions[quizState.currentIndex];
+            document.getElementById('math-unit-badge').textContent = q.unit;
+            document.getElementById('math-question-text').textContent = `Q${quizState.currentIndex + 1}. ${q.question}`;
+
+            const dotsEl = document.getElementById('quiz-progress-dots');
+            dotsEl.innerHTML = '';
+            for (let i = 0; i < 5; i++) {
+                const dot = document.createElement('span');
+                if (i < quizState.currentIndex) {
+                    dot.className = 'w-6 h-6 rounded-full bg-[#22c55e] text-white text-xs flex items-center justify-center font-bold';
+                    dot.textContent = '✓';
+                } else if (i === quizState.currentIndex) {
+                    dot.className = 'w-6 h-6 rounded-full bg-[#f59e0b] text-white text-xs flex items-center justify-center font-bold ring-2 ring-amber-300';
+                    dot.textContent = i + 1;
+                } else {
+                    dot.className = 'w-6 h-6 rounded-full bg-gray-200 text-gray-500 text-xs flex items-center justify-center';
+                    dot.textContent = i + 1;
+                }
+                dotsEl.appendChild(dot);
+            }
+
+            const optsEl = document.getElementById('math-options');
+            optsEl.innerHTML = '';
+            const labels = ['①', '②', '③', '④'];
+            q.options.forEach((opt, idx) => {
+                const btn = document.createElement('button');
+                btn.className = 'ac-btn bg-white hover:bg-[#fef9c3] border-3 border-[#86efac] p-4 rounded-2xl text-left text-base sm:text-lg font-noto font-bold text-[#14532d] flex items-center gap-3';
+                btn.innerHTML = `<span class="text-[#16a34a] text-xl">${labels[idx]}</span> <span>${opt}</span>`;
+                btn.onclick = () => checkMathAnswer(opt, btn);
+                optsEl.appendChild(btn);
+            });
+        }
+
+        function checkMathAnswer(selected, btnEl) {
+            if (quizState.locked) return;
+            const q = quizState.questions[quizState.currentIndex];
+
+            if (selected === q.answer) {
+                quizState.locked = true;
+                playTone('correct');
+                btnEl.classList.remove('bg-white', 'border-[#86efac]');
+                btnEl.classList.add('bg-[#22c55e]', 'text-white', 'border-[#15803d]');
+                showToast('정답이에요! 참 잘했어요 👏');
+
+                setTimeout(() => {
+                    quizState.currentIndex++;
+                    quizState.locked = false;
+                    if (quizState.currentIndex < 5) {
+                        renderCurrentQuestion();
+                    } else {
+                        completeMathSet();
+                    }
+                }, 750);
+            } else {
+                playTone('wrong');
+                btnEl.disabled = true;
+                btnEl.classList.add('bg-rose-100', 'border-rose-300', 'text-rose-400');
+                document.getElementById('cat-wrong-choice').textContent = `내가 고른 답: ${selected}`;
+                document.getElementById('cat-explanation').textContent = q.explain;
+                document.getElementById('cat-modal').classList.remove('hidden');
+            }
+        }
+
+        function closeCatModal() {
+            playTone('click');
+            document.getElementById('cat-modal').classList.add('hidden');
+        }
+
+        function completeMathSet() {
+            playTone('fanfare');
+            const r = Math.random() * 100;
+            let leaf = 1;
+            if (r < 40) leaf = 1;
+            else if (r < 70) leaf = 2;
+            else if (r < 90) leaf = 3;
+            else leaf = 4;
+
+            state.clovers[leaf] = (state.clovers[leaf] || 0) + 1;
+            saveState();
+            updateUI();
+
+            const icons = { 1: '🌱', 2: '🌿', 3: '☘️', 4: '🍀' };
+            const descs = {
+                1: '너구리 상점에서 100원에 팔 수 있어요!',
+                2: '너구리 상점에서 200원에 팔 수 있어요!',
+                3: '너구리 상점에서 300원에 팔 수 있어요!',
+                4: '와우! 행운의 네잎클로버! 부엉이 특별시장에서 1,000원에 팔 수 있어요!'
+            };
+            document.getElementById('clover-reward-icon').textContent = icons[leaf];
+            document.getElementById('clover-reward-name').textContent = `${leaf}잎 클로버 획득!`;
+            document.getElementById('clover-reward-desc').textContent = descs[leaf];
+            document.getElementById('clover-modal').classList.remove('hidden');
+        }
+
+        function closeCloverModal() {
+            playTone('click');
+            document.getElementById('clover-modal').classList.add('hidden');
+            switchView('home');
+        }
+
+        /* ==========================================================================
+           4. 상점 시스템 (너구리 상점 / 부엉이 특별시장 / 노랑토끼 상점)
+           ========================================================================== */
+        let currentShopTab = 'raccoon';
+
+        function selectShopTab(tab) {
+            playTone('click');
+            currentShopTab = tab;
+            ['raccoon', 'owl', 'rabbit'].forEach(t => {
+                const el = document.getElementById(`tab-${t}`);
+                if (t === tab) {
+                    el.classList.add('ring-4', 'ring-amber-300', 'scale-[1.02]');
+                } else {
+                    el.classList.remove('ring-4', 'ring-amber-300', 'scale-[1.02]');
+                }
+            });
+            renderShopContent();
+        }
+
+        function renderShopContent() {
+            const container = document.getElementById('shop-content');
+
+            if (currentShopTab === 'raccoon') {
+                container.innerHTML = `
+                    <div class="flex items-center gap-3 bg-[#fef3c7] p-3 rounded-2xl mb-3">
+                        <span class="text-4xl">🦝</span>
+                        <div>
+                            <p class="font-bold text-[#78350f]">너구리 상점 주인</p>
+                            <p class="text-xs sm:text-sm text-[#92400e] font-noto">"어서오세요구리! 1잎, 2잎, 3잎 클로버를 제값에 사드립니다구리!"</p>
+                        </div>
+                    </div>
+                    <div class="space-y-2.5">
+                        ${[1, 2, 3].map(leaf => {
+                            const price = leaf * 100;
+                            const count = state.clovers[leaf] || 0;
+                            const emoji = leaf === 1 ? '🌱' : (leaf === 2 ? '🌿' : '☘️');
+                            return `
+                                <div class="flex items-center justify-between p-3 rounded-xl border-2 border-[#fde68a] bg-[#fffdf5]">
+                                    <div class="flex items-center gap-2.5">
+                                        <span class="text-3xl">${emoji}</span>
+                                        <div>
+                                            <div class="font-bold text-base">${leaf}잎 클로버 <span class="text-xs text-emerald-600">(보유: ${count}개)</span></div>
+                                            <div class="text-xs text-[#b45309]">판매가: ${price}원</div>
+                                        </div>
+                                    </div>
+                                    <button onclick="sellClover(${leaf}, ${price})" ${count <= 0 ? 'disabled' : ''} class="ac-btn bg-[#f59e0b] text-white px-4 py-2 rounded-xl text-sm font-bold">
+                                        1개 팔기 (+${price}원)
+                                    </button>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                `;
+            } else if (currentShopTab === 'owl') {
+                const count4 = state.clovers[4] || 0;
+                container.innerHTML = `
+                    <div class="flex items-center gap-3 bg-[#ede9fe] p-3 rounded-2xl mb-3">
+                        <span class="text-4xl">🦉</span>
+                        <div>
+                            <p class="font-bold text-[#4c1d95]">부엉이 특별시장 관장</p>
+                            <p class="text-xs sm:text-sm text-[#5b21b6] font-noto">"호오~ 진귀한 4잎 클로버를 가져오셨군요! 특별히 1,000원에 매입하겠습니다!"</p>
+                        </div>
+                    </div>
+                    <div class="flex-1 flex flex-col justify-center">
+                        <div class="flex items-center justify-between p-4 rounded-2xl border-2 border-[#c4b5fd] bg-[#faf5ff]">
+                            <div class="flex items-center gap-3">
+                                <span class="text-4xl">🍀</span>
+                                <div>
+                                    <div class="font-bold text-lg text-[#4c1d95]">행운의 4잎 클로버 <span class="text-sm text-purple-600">(보유: ${count4}개)</span></div>
+                                    <div class="text-sm text-[#6d28d9] font-bold">특별 매입가: 1,000원</div>
+                                </div>
+                            </div>
+                            <button onclick="sellClover(4, 1000)" ${count4 <= 0 ? 'disabled' : ''} class="ac-btn bg-[#7c3aed] text-white px-5 py-3 rounded-xl text-base font-bold">
+                                1개 팔기 (+1,000원)
+                            </button>
+                        </div>
+                    </div>
+                `;
+            } else if (currentShopTab === 'rabbit') {
+                container.innerHTML = `
+                    <div class="flex items-center gap-3 bg-[#fce7f3] p-3 rounded-2xl mb-3">
+                        <span class="text-4xl">🐰</span>
+                        <div>
+                            <p class="font-bold text-[#831843]">노랑토끼 상점</p>
+                            <p class="text-xs sm:text-sm text-[#9d174d] font-noto">"깡총! 먼저 MY 햄스터 집을 사면 귀여운 햄스터 친구가 찾아와요!"</p>
+                        </div>
+                    </div>
+                    <div class="space-y-2">
+                        <div class="flex items-center justify-between p-3 rounded-xl border-2 ${state.hasHouse ? 'border-emerald-300 bg-emerald-50' : 'border-pink-300 bg-pink-50'}">
+                            <div class="flex items-center gap-2.5">
+                                <span class="text-3xl">🏠</span>
+                                <div>
+                                    <div class="font-bold text-base">MY 햄스터 집</div>
+                                    <div class="text-xs text-[#9d174d]">${state.hasHouse ? '구매 완료! 햄스터가 살고 있어요' : `가격: ${PRICES.house}원 (필수)`}</div>
+                                </div>
+                            </div>
+                            ${state.hasHouse 
+                                ? `<span class="bg-emerald-500 text-white px-3 py-1.5 rounded-xl text-xs font-bold">입양 완료 ✓</span>`
+                                : `<button onclick="buyHouse()" ${state.money < PRICES.house ? 'disabled' : ''} class="ac-btn bg-[#ec4899] text-white px-4 py-2 rounded-xl text-sm font-bold">${PRICES.house}원 구매</button>`
+                            }
+                        </div>
+
+                        ${[
+                            { key: 'food', icon: '🌻', name: '해바라기씨 (먹이)', desc: '하루 3회 제한 • 하트+1% (일회성)' },
+                            { key: 'comb', icon: '🪮', name: '핑크 빗', desc: '털 빗어주기 • 하트+1% (일회성)' },
+                            { key: 'toy', icon: '🎡', name: '쳇바퀴 장난감', desc: '신나게 놀기 • 하트+1% (일회성)' }
+                        ].map(item => {
+                            const canBuy = state.hasHouse && state.money >= PRICES[item.key];
+                            return `
+                                <div class="flex items-center justify-between p-2.5 rounded-xl border-2 border-[#fbcfe8] bg-white ${!state.hasHouse ? 'opacity-50' : ''}">
+                                    <div class="flex items-center gap-2.5">
+                                        <span class="text-2xl">${item.icon}</span>
+                                        <div>
+                                            <div class="font-bold text-sm">${item.name} <span class="text-xs text-pink-600">(보유: ${state.inventory[item.key]}개)</span></div>
+                                            <div class="text-[11px] text-gray-500 font-noto">${item.desc}</div>
+                                        </div>
+                                    </div>
+                                    <button onclick="buyItem('${item.key}')" ${!canBuy ? 'disabled' : ''} class="ac-btn bg-[#f43f5e] text-white px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-bold">
+                                        ${PRICES[item.key]}원 구매
+                                    </button>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                `;
+            }
+        }
+
+        function sellClover(leaf, price) {
+            if ((state.clovers[leaf] || 0) <= 0) return;
+            state.clovers[leaf]--;
+            state.money += price;
+            playTone('coin');
+            saveState();
+            updateUI();
+            renderShopContent();
+            showToast(`${leaf}잎 클로버를 팔아 ${price}원을 받았어요! 💰`);
+        }
+
+        function buyHouse() {
+            if (state.hasHouse || state.money < PRICES.house) return;
+            state.money -= PRICES.house;
+            state.hasHouse = true;
+            isHamsterInside = false;
+            saveState();
+            updateUI();
+            switchView('home');
+            triggerHamsterGreeting('우윗~ 우윗~');
+            showToast('축하해요! MY 햄스터 집을 사서 햄스터가 찾아왔어요! 🐹');
+        }
+
+        function buyItem(key) {
+            if (!state.hasHouse || state.money < PRICES[key]) return;
+            state.money -= PRICES[key];
+            state.inventory[key] = (state.inventory[key] || 0) + 1;
+            playTone('coin');
+            saveState();
+            updateUI();
+            renderShopContent();
+            const names = { food: '해바라기씨', comb: '핑크 빗', toy: '쳇바퀴 장난감' };
+            showToast(`${names[key]} 1개를 샀어요! 가방에 넣었습니다 🎒`);
+        }
+
+        /* ==========================================================================
+           5. 햄스터 집 들어가기/나오기, 아이템 직접 화면 애니메이션, 시상식
+           ========================================================================== */
+        let speechTimer = null;
+
+        function triggerHamsterGreeting(text) {
+            playTone('hamster');
+            const bubble = document.getElementById('speech-bubble');
+            const speechText = document.getElementById('speech-text');
+            const hamEl = document.getElementById('hamster-character');
+
+            speechText.textContent = text;
+            bubble.classList.remove('hidden');
+
+            if (!isHamsterInside) {
+                hamEl.classList.remove('animate-hamster-jump');
+                void hamEl.offsetWidth;
+                hamEl.classList.add('animate-hamster-jump');
+            }
+
+            clearTimeout(speechTimer);
+            speechTimer = setTimeout(() => {
+                bubble.classList.add('hidden');
+            }, 3200);
+        }
+
+        // 햄스터 클릭 -> 집에 들어가기
+        function putHamsterInHouse() {
+            if (!state.hasHouse || isHamsterInside) return;
+            isHamsterInside = true;
+            const hamEl = document.getElementById('hamster-character');
+            hamEl.classList.add('hamster-inside');
+            triggerHamsterGreeting('쏙~ 집 안에서 쉴래요! 💤');
+            showToast('햄스터가 집에 들어갔어요! 집을 클릭하면 나올 수 있어요.');
+        }
+
+        // 집 클릭 -> '햄스터 나오기' 버튼 활성화
+        function onHouseClick() {
+            if (!state.hasHouse) return;
+            if (isHamsterInside) {
+                playTone('click');
+                document.getElementById('hamster-out-btn').classList.remove('hidden');
+            } else {
+                triggerHamsterGreeting('우윗~ 내 아늑한 집이에요! 🏠');
+            }
+        }
+
+        // '햄스터 나오기' 버튼 클릭 -> 밖으로 나옴
+        function bringHamsterOut() {
+            isHamsterInside = false;
+            const hamEl = document.getElementById('hamster-character');
+            const outBtn = document.getElementById('hamster-out-btn');
+            hamEl.classList.remove('hamster-inside');
+            outBtn.classList.add('hidden');
+            triggerHamsterGreeting('우윗~ 우윗~ 나왔다! 🐹✨');
+        }
+
+        // 해바라기씨, 빗, 장난감이 화면에 직접 나타나서 실제 사용하는 연출 후 사라짐
+        function playPropAnimation(emoji) {
+            const layer = document.getElementById('prop-fx-layer');
+            const itemEl = document.createElement('div');
+            itemEl.textContent = emoji;
+            itemEl.className = 'animate-prop-use drop-shadow-md';
+            layer.appendChild(itemEl);
+
+            setTimeout(() => {
+                itemEl.remove();
+            }, 1850);
+        }
+
+        function useItem(type) {
+            if (!state.hasHouse) {
+                showToast('먼저 노랑토끼 상점에서 햄스터 집을 사주세요!');
+                return;
+            }
+            if (isHamsterInside) {
+                showToast('햄스터가 집 안에 있어요! 집을 클릭해서 먼저 밖으로 불러내 주세요.');
+                return;
+            }
+            if ((state.inventory[type] || 0) <= 0) {
+                showToast('가방에 아이템이 없어요! 노랑토끼 상점에서 사오세요.');
+                return;
+            }
+
+            if (type === 'food' && state.feedCountToday >= 3) {
+                showToast('오늘 먹이를 3번 모두 주었어요! 🌙 잠자기 버튼을 눌러 다음 날이 되면 다시 줄 수 있어요.');
+                return;
+            }
+
+            state.inventory[type]--;
+            if (type === 'food') {
+                state.feedCountToday++;
+            }
+
+            if (state.heart < 100) {
+                state.heart = Math.min(100, state.heart + 1);
+            }
+
+            saveState();
+            updateUI();
+
+            // 아이템별 화면 직접 연출 + 말풍선
+            if (type === 'food') {
+                playPropAnimation('🌻');
+                triggerHamsterGreeting('❤️ 냠냠! 해바라기씨 최고! ❤️');
+                showToast(`해바라기씨를 주었어요! 오늘 (${state.feedCountToday}/3회) • 하트 +1%`);
+            } else if (type === 'comb') {
+                playPropAnimation('🪮');
+                triggerHamsterGreeting('✨ 사각사각 빗질 기분 좋아요~ ✨');
+                showToast('핑크 빗으로 빗어주었어요! 하트 +1%');
+            } else if (type === 'toy') {
+                playPropAnimation('🎡');
+                triggerHamsterGreeting('🎶 데굴데굴 쳇바퀴 너무 신나요! 🎶');
+                showToast('장난감으로 신나게 놀아주었어요! 하트 +1%');
+            }
+
+            if (state.heart >= 100 && !state.awardShown) {
+                state.awardShown = true;
+                saveState();
+                setTimeout(() => {
+                    openAwardModal();
+                }, 1200);
+            }
+        }
+
+        function sleepNextDay() {
+            playTone('click');
+            const overlay = document.getElementById('sleep-overlay');
+            overlay.classList.remove('hidden');
+
+            setTimeout(() => {
+                state.dayCount += 1;
+                state.feedCountToday = 0;
+                state.lastRealDate = getTodayStr();
+                saveState();
+                updateUI();
+                overlay.classList.add('hidden');
+                showToast(`☀️ 상쾌한 ${state.dayCount}일차 아침이 되었어요! 먹이를 다시 3번 줄 수 있습니다.`);
+                if (state.hasHouse && !isHamsterInside) {
+                    triggerHamsterGreeting('우윗~ 잘 잤어요! 배고파요~');
+                }
+            }, 1300);
+        }
+
+        function openAwardModal() {
+            playTone('fanfare');
+            document.getElementById('award-modal').classList.remove('hidden');
+        }
+
+        function closeAwardModal() {
+            playTone('click');
+            document.getElementById('award-modal').classList.add('hidden');
+            updateUI();
+        }
+
+        function resetForNewHamster() {
+            playTone('click');
+            state.hasHouse = false;
+            state.heart = 0;
+            state.awardShown = false;
+            state.feedCountToday = 0;
+            isHamsterInside = false;
+            saveState();
+            updateUI();
+            document.getElementById('award-modal').classList.add('hidden');
+            showToast('새로운 햄스터를 맞이할 준비가 되었어요! 상점에서 집을 다시 구매해 주세요.');
+        }
+
+        /* ==========================================================================
+           6. 화면 전환 및 UI 동기화
+           ========================================================================== */
+        function switchView(viewName) {
+            playTone('click');
+            ['home', 'math', 'shops'].forEach(v => {
+                document.getElementById(`view-${v}`).classList.add('hidden');
+            });
+            document.getElementById(`view-${viewName}`).classList.remove('hidden');
+
+            if (viewName === 'shops') {
+                selectShopTab(currentShopTab);
+            }
+            updateUI();
+        }
+
+        function updateUI() {
+            document.getElementById('day-display').textContent = `${state.dayCount}일차` + (currentPin ? ` (PIN: ${currentPin})` : '');
+            document.getElementById('money-display').textContent = `${state.money.toLocaleString()}원`;
+            const totalClovers = (state.clovers[1]||0) + (state.clovers[2]||0) + (state.clovers[3]||0) + (state.clovers[4]||0);
+            document.getElementById('clover-total-display').textContent = `${totalClovers}개`;
+            document.getElementById('sound-btn').textContent = state.soundOn ? '🔊' : '🔇';
+
+            document.getElementById('c1-cnt').textContent = state.clovers[1] || 0;
+            document.getElementById('c2-cnt').textContent = state.clovers[2] || 0;
+            document.getElementById('c3-cnt').textContent = state.clovers[3] || 0;
+            document.getElementById('c4-cnt').textContent = state.clovers[4] || 0;
+
+            document.getElementById('heart-text').textContent = `${state.heart} / 100%`;
+            document.getElementById('heart-bar').style.width = `${state.heart}%`;
+
+            document.getElementById('feed-count-display').textContent = `${state.feedCountToday} / 3회`;
+
+            if (state.hasHouse) {
+                document.getElementById('no-house-msg').classList.add('hidden');
+                document.getElementById('hamster-container').classList.remove('hidden');
+            } else {
+                document.getElementById('no-house-msg').classList.remove('hidden');
+                document.getElementById('hamster-container').classList.add('hidden');
+            }
+
+            document.getElementById('inv-food').textContent = `보유: ${state.inventory.food || 0}개`;
+            document.getElementById('inv-comb').textContent = `보유: ${state.inventory.comb || 0}개`;
+            document.getElementById('inv-toy').textContent = `보유: ${state.inventory.toy || 0}개`;
+
+            document.getElementById('use-food-btn').disabled = !state.hasHouse || (state.inventory.food || 0) <= 0 || state.feedCountToday >= 3;
+            document.getElementById('use-comb-btn').disabled = !state.hasHouse || (state.inventory.comb || 0) <= 0;
+            document.getElementById('use-toy-btn').disabled = !state.hasHouse || (state.inventory.toy || 0) <= 0;
+
+            if (state.heart >= 100) {
+                document.getElementById('award-replay-btn').classList.remove('hidden');
+            } else {
+                document.getElementById('award-replay-btn').classList.add('hidden');
+            }
+        }
+
+        // 앱 초기화 시 PIN 입력창에 포커스
+        window.onload = function() {
+            updateUI();
+            const pinInput = document.getElementById('pin-input');
+            if (pinInput) pinInput.focus();
+        };
+    </script>
+</body>
+</html>
